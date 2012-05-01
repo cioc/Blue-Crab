@@ -5,15 +5,23 @@ import rice.p2p.past.ContentHashPastContent;
 
 public class StorageObject extends ContentHashPastContent{
 	private String content;
-	/*
-	 * TODO: BE ABLE TO CONVERT A FILE TO STRING FOR STORAGE
-	 */
+	private String path;
 	public StorageObject(Id id, String content) {
 		super(id);
 		this.content = content;
+		this.path = null;
+	}
+	public StorageObject(Id id, String content, String path) {
+		super(id);
+		this.content = content;
+		this.path = path;
 	}
 	public String toString(){
-		return "StorageObject: "+content;
+		if (path != null) {
+			return "StorageObject: "+content;
+		} else {
+			return "StorageObject: "+path;
+		}
 	}
 	
 }

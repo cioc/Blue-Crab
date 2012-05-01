@@ -1,6 +1,7 @@
 package blue_crab;
 
 import java.io.IOException; 
+import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
 import java.io.BufferedReader;
 
@@ -25,7 +26,7 @@ public class Repl {
 			this.data = data;
 			this.key = "";
 		}
-		public Operation(String type, String key, String data) {
+		public Operation(String type, String data, String key) {
 			this.type = type;
 			this.data = data;
 			this.key = key;
@@ -50,6 +51,20 @@ public class Repl {
 			if (pieces[0].equals("GET")) {
 				if (line.length() > 4) {
 					return new Operation("GET", line.substring(4));
+				} else {
+					return null;
+				}
+			}
+			if (pieces[0].equals("SETF")) {
+				if (line.length() > 5) {
+					String[] fileParts = line.substring(5).split("/");
+					String key = "";
+					if (fileParts.length > 0) {
+						key = fileParts[fileParts.length - 1];
+					} else {
+						key = line.substring(5);
+					}
+					return new Operation("SETF", line.substring(5), key);
 				} else {
 					return null;
 				}
@@ -80,16 +95,29 @@ public class Repl {
 			} catch (Exception e) {
 				System.err.println("Error during GET operation: "+e.getMessage());
 			}
-			
 		}
 		if (op.type.equals("SET")) {
 			try {
-				Id id = crab.set(op.data);
+				Id id = crab.setFromString(op.data);
 				if (id != null) {
 					this.keyToIdMap.put(op.getKey(), id);
 				}
 			} catch (Exception e) {
 				System.err.println("Error during SET operation: "+e.getClass()+" | "+e.getMessage());
+				e.printStackTrace();
+			}
+		}
+		if (op.type.equals("SETF")) {
+			try {
+				Id id = crab.setFromFile(op.data);
+				if (id != null) {
+					this.keyToIdMap.put(op.getKey(), id);
+				}
+			} catch (FileNotFoundException e) {
+				System.err.println("File not found during SETF operation: "+op.data+" | "+e.getClass()+" | "+e.getMessage());
+				e.printStackTrace();
+			} catch (Exception e) {
+				System.err.println("Error during SETF operation: "+e.getClass()+" | "+e.getMessage());
 				e.printStackTrace();
 			}
 		}

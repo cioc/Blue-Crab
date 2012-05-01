@@ -62,10 +62,7 @@ public class BlueCrab {
 		//WAIT SO THAT WE KNOW GET GOT ALL OUR NODES STARTED
 		env.getTimeSource().sleep(5000);
 	}
-	
-	public Id set(final String val) throws Exception {
-		final StorageObject storageObj = new StorageObject(this.local_factory.buildId(val), val);
-		
+	private Id set(final StorageObject storageObj) throws Exception{
 		Past p = (Past)this.nodes.get(env.getRandomSource().nextInt(number_of_nodes));
 		
 		BlueCrabContinuation<Boolean[], Exception> c = new BlueCrabContinuation<Boolean[], Exception>(){
@@ -94,6 +91,16 @@ public class BlueCrab {
 		} else {
 			return null;
 		}
+	}
+	
+	public Id setFromFile(String path) throws Exception {
+		final StorageObject storageObj = StorageObjectFactory.fromFile(this.local_factory, path);
+		return this.set(storageObj);
+	}
+	
+	public Id setFromString(final String val) throws Exception {
+		final StorageObject storageObj = new StorageObject(this.local_factory.buildId(val), val);
+		return this.set(storageObj);
 	}
 	
 	public String get(final Id key) throws Exception {		
