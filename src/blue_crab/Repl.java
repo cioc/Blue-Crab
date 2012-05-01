@@ -90,7 +90,7 @@ public class Repl {
 		if (op.type.equals("GET")) {
 			try {
 				Id key = this.keyToIdMap.get(op.data);
-				String result = crab.get(key);
+				String result = crab.getSafe(key);
 				System.out.println(result);
 			} catch (Exception e) {
 				System.err.println("Error during GET operation: "+e.getMessage());
