@@ -11,9 +11,11 @@ public abstract class BlueCrabContinuation<R, E extends Exception> implements Co
 	public boolean receivedResponse(){
 		return this.received_response;
 	}
+	
 	public boolean wasSuccessful() {
 		return this.success;
 	}
+	
 	public PastContent getResult() {
 		return this.result;
 	}

@@ -17,7 +17,7 @@ public class StorageObject extends ContentHashPastContent{
 		this.path = path;
 	}
 	public String toString(){
-		if (path != null) {
+		if (path == null) {
 			return "StorageObject: "+content;
 		} else {
 			return "StorageObject: "+path;

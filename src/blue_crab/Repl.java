@@ -69,10 +69,10 @@ public class Repl {
 					return null;
 				}
 			}
-			if (pieces[0].equals("SET")){
-				if (line.length() > 4) {
+			if (pieces[0].equals("SEARCH")) {
+				if (line.length() > 7) {
 					if (pieces.length > 2) {
-						return new Operation("SET",pieces[1], line.substring(4+pieces[1].length()));
+						return new Operation("SEARCH", line.substring(7+pieces[1].length()), pieces[1]);
 					} else {
 						return null;
 					}
@@ -80,6 +80,18 @@ public class Repl {
 					return null;
 				}
 			}
+			if (pieces[0].equals("SET")){
+				if (line.length() > 4) {
+					if (pieces.length > 2) {
+						return new Operation("SET", line.substring(4+pieces[1].length()), pieces[1]);
+					} else {
+						return null;
+					}
+				} else {
+					return null;
+				}
+			}
+			
 			return null;
 		} else {
 			return null;
@@ -90,7 +102,8 @@ public class Repl {
 		if (op.type.equals("GET")) {
 			try {
 				Id key = this.keyToIdMap.get(op.data);
-				String result = crab.getSafe(key);
+				System.out.println("Get: " + key.toStringFull());
+				String result = crab.get(key);
 				System.out.println(result);
 			} catch (Exception e) {
 				System.err.println("Error during GET operation: "+e.getMessage());
@@ -98,10 +111,12 @@ public class Repl {
 		}
 		if (op.type.equals("SET")) {
 			try {
+				System.out.println("BLAG: " + op.data);
 				Id id = crab.setFromString(op.data);
 				if (id != null) {
 					this.keyToIdMap.put(op.getKey(), id);
 				}
+				System.out.println("Stored:" + id.toStringFull());
 			} catch (Exception e) {
 				System.err.println("Error during SET operation: "+e.getClass()+" | "+e.getMessage());
 				e.printStackTrace();
@@ -118,6 +133,19 @@ public class Repl {
 				e.printStackTrace();
 			} catch (Exception e) {
 				System.err.println("Error during SETF operation: "+e.getClass()+" | "+e.getMessage());
+				e.printStackTrace();
+			}
+		}
+		if (op.type.equals("SEARCH")) {
+			try {
+				HashMap<Id, String> results = crab.search(Integer.parseInt(op.key), op.data);
+				System.out.println("Results:");
+				for (Id id : results.keySet()) {
+					String data = results.get(id);
+					System.out.println(id.toString() + " : "+data);
+				}
+			} catch (Exception e) {
+				System.err.println("Search error: "+op.data+" | "+e.getClass()+" | "+e.getMessage());
 				e.printStackTrace();
 			}
 		}

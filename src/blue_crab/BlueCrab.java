@@ -15,8 +15,11 @@ import rice.pastry.*;
 import rice.pastry.commonapi.PastryIdFactory;
 import rice.pastry.socket.SocketPastryNodeFactory;
 import rice.pastry.standard.RandomNodeIdFactory;
-import rice.p2p.past.PastException;
 import rice.persistence.*;
+
+import java.lang.IndexOutOfBoundsException;
+import java.util.HashMap;
+import org.apache.lucene.queryParser.ParseException;
 
 public class BlueCrab {
 	private Vector<Past> nodes;
@@ -66,7 +69,7 @@ public class BlueCrab {
 			PastryNode node = this.pastry_node_factory.newNode();
 			PastryIdFactory idf = new rice.pastry.commonapi.PastryIdFactory(env);
 			String storageDirectory = storage_directory+node.getId().hashCode();
-			Storage stor = new PersistentStorage(idf, storageDirectory, 4 * 1024 * 1024, node.getEnvironment());
+			Storage stor = new BlueCrabIndexingPersistentStorage(idf, storageDirectory, 4 * 1024 * 1024, node.getEnvironment());
 			Past past = new PastImpl(node, new StorageManagerImpl(idf, stor, new LRUCache(new MemoryStorage(idf), 512 * 1024, node.getEnvironment())), replicas,"");
 			nodes.add(past);
 			if (i == 0){
@@ -90,7 +93,7 @@ public class BlueCrab {
 		env.getTimeSource().sleep(5000);
 	}
 	private Id set(final StorageObject storageObj) throws Exception{
-		Past p = (Past)this.nodes.get(env.getRandomSource().nextInt(number_of_nodes));
+		PastImpl p = (PastImpl)this.nodes.get(env.getRandomSource().nextInt(number_of_nodes));
 		
 		BlueCrabContinuation<Boolean[], Exception> c = new BlueCrabContinuation<Boolean[], Exception>(){
 			public void receiveResult(Boolean[] results){
@@ -101,6 +104,7 @@ public class BlueCrab {
 					if (results[ctr].booleanValue())
 						numSuccessfulStores++;
 				}
+				//System.out.println("NUMBER OF SUCC: "+numSuccessfulStores);
 			}
 			public void receiveException(Exception result){
 				this.received_response = true;
@@ -114,6 +118,8 @@ public class BlueCrab {
 			env.getTimeSource().sleep(50);
 		}
 		if (c.wasSuccessful()) {
+			BlueCrabIndexingPersistentStorage storage_reference = (BlueCrabIndexingPersistentStorage)p.getStorageManager().getStorage();
+			storage_reference.indexDocuments();
 			return storageObj.getId();
 		} else {
 			return null;
@@ -129,18 +135,18 @@ public class BlueCrab {
 		final StorageObject storageObj = new StorageObject(this.local_factory.buildId(val), val);
 		return this.set(storageObj);
 	}
-	
-	public String getSafe(final Id key) {
-		try {
-			return this.get(key);
-		} 
-		catch (Exception e) {
-			System.err.println("Exception occured in getSafe: "+e.getMessage());
+		
+	public HashMap<Id, String> search(int node, String query) throws IndexOutOfBoundsException, IOException, ParseException{
+		if (node >= 0 && node < number_of_nodes) {
+			PastImpl p = (PastImpl)this.nodes.get(node);
+			BlueCrabIndexingPersistentStorage storage_reference = (BlueCrabIndexingPersistentStorage)p.getStorageManager().getStorage();
+			return storage_reference.search(query);
+		} else {
+			throw new IndexOutOfBoundsException(); 
 		}
-		return null;
 	}
 	
-	private String get(final Id key) throws Exception {		
+	public String get(final Id key) throws Exception {		
 		Past p = (Past)this.nodes.get(env.getRandomSource().nextInt(number_of_nodes));
 		
 		BlueCrabContinuation<PastContent, Exception> c = new BlueCrabContinuation<PastContent, Exception>(){
@@ -170,7 +176,7 @@ public class BlueCrab {
 	public static void main(String[] args) throws Exception {
 		//TESTING PARAMETERS
 		int replicas = 4;
-		String storage_directory = "/home/charles/bluecrabstorage";
+		String storage_directory = "/home/charles/bluecrab/";
 		int test_node_count = 10;
 		int test_port = 9001;
 		try {
