@@ -91,7 +91,9 @@ public class Repl {
 					return null;
 				}
 			}
-			
+			if (pieces[0].equals("EXIT")) {
+				System.exit(0);
+			}
 			return null;
 		} else {
 			return null;

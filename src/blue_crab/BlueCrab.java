@@ -37,29 +37,12 @@ public class BlueCrab {
 		local_factory = new rice.pastry.commonapi.PastryIdFactory(env);
 		number_of_nodes = node_count;
 		InetAddress bootaddr;
-		/*
-		 * START HERE 
-		 */
 		if (hostname == null) {
-			//THIS IS A BIT OF A HACK TO START A NEW RING CORRECTLY
-			/*
-			 * MAKE THIS WORK ON WIRELESS CONNECTIONS
-			 * MAKE THIS WORK ON MULTIPLE OPERATING SYSTEMS
-			 */
-			String addrString = "";
-			for (Enumeration<NetworkInterface> net_interfaces = NetworkInterface.getNetworkInterfaces(); net_interfaces.hasMoreElements();) {
-				NetworkInterface curr = net_interfaces.nextElement();
-				System.out.println(curr.getName());
-				int addr_count = 0;
-				for (Enumeration<InetAddress> addresses = curr.getInetAddresses(); addresses.hasMoreElements();){
-					InetAddress curr_addr = addresses.nextElement();
-					if (curr.getName().equals("eth0") && addr_count == 2) {
-						addrString = curr_addr.toString();
-					}
-					addr_count += 1;
-				}
+			bootaddr = BlueCrabIPDetector.findBootAddr();
+			if (bootaddr == null) {
+				System.err.println("Unable to get bootaddr");	
+				throw new Exception();
 			}
-			bootaddr = InetAddress.getByName(addrString.substring(1));
 		} else {
 			bootaddr = InetAddress.getByName(hostname);
 		}
@@ -104,7 +87,6 @@ public class BlueCrab {
 					if (results[ctr].booleanValue())
 						numSuccessfulStores++;
 				}
-				//System.out.println("NUMBER OF SUCC: "+numSuccessfulStores);
 			}
 			public void receiveException(Exception result){
 				this.received_response = true;
@@ -186,6 +168,7 @@ public class BlueCrab {
 			System.exit(0);
 		} catch (Exception e) {
 			System.err.println("Error occured in BlueCrab constructor: "+e.getMessage());
+			System.exit(1);
 		}
 	}
 }
