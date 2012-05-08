@@ -100,8 +100,8 @@ public class BlueCrab {
 			env.getTimeSource().sleep(50);
 		}
 		if (c.wasSuccessful()) {
-			BlueCrabIndexingPersistentStorage storage_reference = (BlueCrabIndexingPersistentStorage)p.getStorageManager().getStorage();
-			storage_reference.indexDocuments();
+			//BlueCrabIndexingPersistentStorage storage_reference = (BlueCrabIndexingPersistentStorage)p.getStorageManager().getStorage();
+			//storage_reference.indexDocuments();
 			return storageObj.getId();
 		} else {
 			return null;

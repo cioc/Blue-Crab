@@ -113,7 +113,6 @@ public class Repl {
 		}
 		if (op.type.equals("SET")) {
 			try {
-				System.out.println("BLAG: " + op.data);
 				Id id = crab.setFromString(op.data);
 				if (id != null) {
 					this.keyToIdMap.put(op.getKey(), id);

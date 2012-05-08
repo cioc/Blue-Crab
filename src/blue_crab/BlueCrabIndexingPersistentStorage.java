@@ -215,8 +215,9 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
   private StandardAnalyzer search_analyzer;
   private RAMDirectory search_index;
   private IndexWriterConfig search_config;
-  private HashSet<Id> search_indexed_already;
+  private HashSet<String> search_indexed_already;
   private org.apache.lucene.util.Version search_lucene_version;
+  private IndexWriter search_writer;
   
   
  /**
@@ -268,8 +269,9 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
     this.search_analyzer = new StandardAnalyzer(this.search_lucene_version);
     this.search_index = new RAMDirectory();
     this.search_config = new IndexWriterConfig(this.search_lucene_version, this.search_analyzer);
-    this.search_indexed_already = new HashSet<Id>();
-      
+    this.search_indexed_already = new HashSet<String>();
+    this.search_writer = new IndexWriter(this.search_index, this.search_config);  
+    
     if (logger.level <= Logger.INFO) logger.log( "Launching persistent storage in " + rootDir + " with name " + name + " spliting factor " + MAX_FILES);
     
     init();
@@ -280,17 +282,16 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
    * In general, these are blocking
    */
   
- public void indexDocuments() throws Exception{
+ public synchronized void indexDocuments() throws Exception{
 	  Set<Id> ids = this.metadata.keyMap().keySet();
-	  IndexWriter search_writer = new IndexWriter(this.search_index, this.search_config); 
 	  for (Id id : ids) {
 		  this.indexById(id, search_writer);
 	  }
-	  search_writer.close();
+	  this.search_writer.commit();
   }
   
   private void indexById(Id id, IndexWriter search_writer) throws Exception{
-	  if (this.metadata.containsKey(id) && !(this.search_indexed_already.contains(id))) {
+	  if (this.metadata.containsKey(id) && !(this.search_indexed_already.contains(id.toStringFull()))) {
 		  File f = getFile(id);
 		  Serializable data = readData(f);
 		  Document doc = new Document();
@@ -300,12 +301,7 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
 		  doc.add(new Field("id", id.toStringFull(), Field.Store.YES, Field.Index.NOT_ANALYZED));
 		  doc.add(new Field("data", data.toString(), Field.Store.YES, Field.Index.ANALYZED));
 		  search_writer.addDocument(doc);
-		  this.search_indexed_already.add(id);
-	  } else {
-		  /*
-		   * TODO: create no id exception on find where something like it is defined
-		   */
-		throw new Exception();
+		  this.search_indexed_already.add(id.toStringFull());
 	  }
   }
   
@@ -485,6 +481,10 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
         if (index) {
           synchronized (BlueCrabIndexingPersistentStorage.this.metadata) {
         	  BlueCrabIndexingPersistentStorage.this.metadata.put(id, metadata);
+        	  /*
+        	   * PERFORM INDEXING
+        	   */
+        	  BlueCrabIndexingPersistentStorage.this.indexDocuments();
             dirty.add(objFile.getParentFile());
           }
         }
