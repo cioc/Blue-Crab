@@ -1,4 +1,4 @@
-package blue_crab;
+package blue_crab.Scribe;
 
 public enum BlueCrabMessageType {
 	SEARCH,

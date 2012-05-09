@@ -1,4 +1,4 @@
-package blue_crab;
+package blue_crab.Scribe;
 
 /*
  * The starting point of this class is MyScribeContent.java
@@ -11,6 +11,7 @@ import rice.p2p.scribe.ScribeContent;
 public abstract class BlueCrabScribeContent implements ScribeContent{
 	protected BlueCrabMessageType type;
 	protected NodeHandle from;
+	protected byte[] search_key;
 	
 	public BlueCrabMessageType getType(){
 		return this.type;
@@ -18,5 +19,9 @@ public abstract class BlueCrabScribeContent implements ScribeContent{
 	
 	public NodeHandle from() {
 		return this.from;
+	}
+	
+	public byte[] search_key() {
+		return this.search_key;
 	}
 }

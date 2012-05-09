@@ -1,4 +1,4 @@
-package blue_crab;
+package blue_crab.Storage;
 
 import rice.p2p.commonapi.Id;
 import rice.p2p.past.ContentHashPastContent;

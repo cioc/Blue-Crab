@@ -1,4 +1,4 @@
-package blue_crab;
+package blue_crab.Scribe;
 
 import rice.p2p.commonapi.Id;
 

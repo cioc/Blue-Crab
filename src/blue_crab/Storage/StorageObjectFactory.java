@@ -1,4 +1,4 @@
-package blue_crab;
+package blue_crab.Storage;
 
 import java.io.FileReader;
 import java.io.IOException;

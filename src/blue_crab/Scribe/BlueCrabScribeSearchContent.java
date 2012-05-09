@@ -1,14 +1,13 @@
-package blue_crab;
+package blue_crab.Scribe;
 
 import rice.p2p.commonapi.NodeHandle;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Calendar;
 
+
 public class BlueCrabScribeSearchContent extends BlueCrabScribeContent{
-	private String query;
-	private byte[] search_key;
-	
+	private String query;	
 	/*
 	 * For constructing a search query message
 	 */
@@ -23,10 +22,6 @@ public class BlueCrabScribeSearchContent extends BlueCrabScribeContent{
 	
 	public String query(){
 		return this.query;
-	}
-	
-	public byte[] search_key() {
-		return this.search_key;
 	}
 	
 	public String toString(){

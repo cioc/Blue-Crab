@@ -1,4 +1,4 @@
-package blue_crab;
+package blue_crab.Storage;
 
 /*
  * This is a modification of PersistentStorage in include indexing and searching.  

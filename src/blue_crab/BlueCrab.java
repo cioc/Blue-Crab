@@ -21,6 +21,10 @@ import java.lang.IndexOutOfBoundsException;
 import java.util.HashMap;
 import org.apache.lucene.queryParser.ParseException;
 
+import blue_crab.Storage.BlueCrabIndexingPersistentStorage;
+import blue_crab.Storage.StorageObject;
+import blue_crab.Storage.StorageObjectFactory;
+
 public class BlueCrab {
 	private Vector<Past> nodes;
 	private final Environment env;

@@ -1,26 +1,30 @@
-package blue_crab;
+package blue_crab.Scribe;
 
 import rice.p2p.commonapi.NodeHandle;
 import rice.p2p.commonapi.Id;
-import java.util.HashSet;
+
+import java.util.ArrayList;
+
 
 public class BlueCrabScribeSearchResultContent extends BlueCrabScribeContent{
-
-	private byte[] search_key;
-	private HashSet<BlueCrabSearchResult> results;
+	private ArrayList<BlueCrabSearchResult> results;
 
 	public BlueCrabScribeSearchResultContent(NodeHandle from, byte[] search_key){
 		this.from = from;
 		this.type = BlueCrabMessageType.RESULT_RESPONSE;
 		this.search_key = search_key;
-		this.results = new HashSet<BlueCrabSearchResult>();
+		this.results = new ArrayList<BlueCrabSearchResult>();
 	}
 	
 	public void addResult(Id id, double score, String digest){
 		this.results.add(new BlueCrabSearchResult(id, score, digest));
 	}
 	
-	public HashSet<BlueCrabSearchResult> getResults(){
+	public void setResults(ArrayList<BlueCrabSearchResult> results) {
+		this.results = results;
+	}
+	
+	public ArrayList<BlueCrabSearchResult> getResults(){
 		return this.results;
 	}
 	
