@@ -1,0 +1,8 @@
+Welcome to the Blue Crab Project!
+
+Blue Crab is a project to bring the redundancy and search power of large-scale enterprise search systems to small businesses and households without the high up front costs of these enterprise search systems.
+
+Blue Crab uses much of the PASTRY, PAST, and SCRIBE projects to implement storage and messaging.  Apache Tika and Lucene are used for search. 
+
+-Charles Cary
+ (5/9/2012)
