@@ -55,6 +55,13 @@ public class Repl {
 					return null;
 				}
 			}
+			if (pieces[0].equals("SEARCH")) {
+				if (line.length() > 7) {
+					return new Operation("SEARCH", line.substring(7));
+				} else {
+					return null;
+				}
+			}
 			if (pieces[0].equals("SETF")) {
 				if (line.length() > 5) {
 					String[] fileParts = line.substring(5).split("/");
@@ -65,17 +72,6 @@ public class Repl {
 						key = line.substring(5);
 					}
 					return new Operation("SETF", line.substring(5), key);
-				} else {
-					return null;
-				}
-			}
-			if (pieces[0].equals("SEARCH")) {
-				if (line.length() > 7) {
-					if (pieces.length > 2) {
-						return new Operation("SEARCH", line.substring(7+pieces[1].length()), pieces[1]);
-					} else {
-						return null;
-					}
 				} else {
 					return null;
 				}
@@ -139,7 +135,7 @@ public class Repl {
 		}
 		if (op.type.equals("SEARCH")) {
 			try {
-				HashMap<Id, String> results = crab.search(Integer.parseInt(op.key), op.data);
+				HashMap<Id, String> results = crab.search(op.data, 5000);
 				System.out.println("Results:");
 				for (Id id : results.keySet()) {
 					String data = results.get(id);

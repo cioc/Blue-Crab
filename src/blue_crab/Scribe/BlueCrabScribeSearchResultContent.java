@@ -9,7 +9,7 @@ import java.util.ArrayList;
 public class BlueCrabScribeSearchResultContent extends BlueCrabScribeContent{
 	private ArrayList<BlueCrabSearchResult> results;
 
-	public BlueCrabScribeSearchResultContent(NodeHandle from, byte[] search_key){
+	public BlueCrabScribeSearchResultContent(NodeHandle from, String search_key){
 		this.from = from;
 		this.type = BlueCrabMessageType.RESULT_RESPONSE;
 		this.search_key = search_key;

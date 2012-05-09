@@ -2,6 +2,9 @@ package blue_crab;
 
 import java.io.IOException;
 import java.net.*;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Vector;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -25,8 +28,13 @@ import blue_crab.Storage.BlueCrabIndexingPersistentStorage;
 import blue_crab.Storage.StorageObject;
 import blue_crab.Storage.StorageObjectFactory;
 
+import blue_crab.Scribe.BlueCrabSearchResult;
+import blue_crab.Search.BlueCrabSearcher;
+
 public class BlueCrab {
 	private Vector<Past> nodes;
+	private Vector<BlueCrabSearcher> search_nodes;
+	//private Vector<>
 	private final Environment env;
 	private NodeIdFactory node_id_factory;
 	private PastryNodeFactory pastry_node_factory;
@@ -36,6 +44,7 @@ public class BlueCrab {
 	public BlueCrab(int replicas, int port, String hostname, int node_count, String storage_directory) throws Exception {
 		env = new Environment();
 		nodes = new Vector<Past>();
+		this.search_nodes = new Vector<BlueCrabSearcher>();
 		node_id_factory = new RandomNodeIdFactory(env);
 		pastry_node_factory = new SocketPastryNodeFactory(node_id_factory, port, env);
 		local_factory = new rice.pastry.commonapi.PastryIdFactory(env);
@@ -58,7 +67,9 @@ public class BlueCrab {
 			String storageDirectory = storage_directory+node.getId().hashCode();
 			Storage stor = new BlueCrabIndexingPersistentStorage(idf, storageDirectory, 4 * 1024 * 1024, node.getEnvironment());
 			Past past = new PastImpl(node, new StorageManagerImpl(idf, stor, new LRUCache(new MemoryStorage(idf), 512 * 1024, node.getEnvironment())), replicas,"");
+			BlueCrabSearcher searcher = new BlueCrabSearcher(node, (BlueCrabIndexingPersistentStorage)stor);
 			nodes.add(past);
+			search_nodes.add(searcher);
 			if (i == 0){
 				node.boot(Collections.EMPTY_LIST);
 			} else {
@@ -76,8 +87,16 @@ public class BlueCrab {
 			
 			System.out.println("Finished creating new Node "+i + " | " + node);
 		}
-		//WAIT SO THAT WE KNOW GET GOT ALL OUR NODES STARTED
+		
+		System.out.println("Waiting for system to fully boot...");
 		env.getTimeSource().sleep(5000);
+		
+		//GET ALL OF OUR SEARCH NODES GOING
+		Iterator<BlueCrabSearcher> i = search_nodes.iterator();
+		while (i.hasNext()) {
+			BlueCrabSearcher t = i.next();
+			t.subscribe();
+		}
 	}
 	private Id set(final StorageObject storageObj) throws Exception{
 		PastImpl p = (PastImpl)this.nodes.get(env.getRandomSource().nextInt(number_of_nodes));
@@ -121,7 +140,9 @@ public class BlueCrab {
 		final StorageObject storageObj = new StorageObject(this.local_factory.buildId(val), val);
 		return this.set(storageObj);
 	}
-		
+	
+	//@Deprecated
+	/*
 	public HashMap<Id, String> search(int node, String query) throws IndexOutOfBoundsException, IOException, ParseException{
 		if (node >= 0 && node < number_of_nodes) {
 			PastImpl p = (PastImpl)this.nodes.get(node);
@@ -130,6 +151,23 @@ public class BlueCrab {
 		} else {
 			throw new IndexOutOfBoundsException(); 
 		}
+	}
+	*/
+	
+	public HashMap<Id, String> search(String query, int wait_time) throws NoSuchAlgorithmException, InterruptedException {
+		BlueCrabSearcher searcher = this.search_nodes.get(env.getRandomSource().nextInt(number_of_nodes));
+		System.out.println("SEARCHED TO INITIATE REQUEST: "+searcher.hashCode());
+		String key = searcher.globalSearch(query);
+		System.out.println("INITIAL REQUEST QUERY: "+key.toString());
+		env.getTimeSource().sleep(wait_time);
+		ArrayList<BlueCrabSearchResult> results = searcher.getSearchResults(key);
+		HashMap<Id, String>output = new HashMap<Id, String>();
+		for (BlueCrabSearchResult r : results) {
+			if (!(output.containsKey(r.id))) {
+				output.put(r.id, r.digest);
+			}
+		}
+		return output;
 	}
 	
 	public String get(final Id key) throws Exception {		

@@ -2,6 +2,7 @@ package blue_crab.Search;
 
 import blue_crab.Storage.BlueCrabIndexingPersistentStorage;
 import blue_crab.Scribe.BlueCrabMessagingClient;
+import blue_crab.Scribe.BlueCrabScribeSearchContent;
 import blue_crab.Scribe.BlueCrabSearchResult;
 
 import java.io.IOException;
@@ -13,16 +14,20 @@ import org.apache.lucene.queryParser.ParseException;
 
 import rice.p2p.commonapi.Id;
 import rice.p2p.commonapi.Node;
+import rice.pastry.PastryNode;
 
 public class BlueCrabSearcher {
 	private BlueCrabIndexingPersistentStorage storage;
 	private BlueCrabMessagingClient messenger;
-	private HashMap<byte[], ArrayList<BlueCrabSearchResult>> outstandingSearches;
+	private HashMap<String, ArrayList<BlueCrabSearchResult>> outstandingSearches;
 	
-	public BlueCrabSearcher(Node node, BlueCrabIndexingPersistentStorage storage) {
+	public BlueCrabSearcher(PastryNode node, BlueCrabIndexingPersistentStorage storage) {
 		this.storage = storage;
-		this.outstandingSearches = new HashMap<byte[], ArrayList<BlueCrabSearchResult>>();
+		this.outstandingSearches = new HashMap<String, ArrayList<BlueCrabSearchResult>>();
 		this.messenger = new BlueCrabMessagingClient(node, this);
+	}
+	
+	public void subscribe() {
 		this.messenger.subscribe();
 	}
 	
@@ -35,15 +40,23 @@ public class BlueCrabSearcher {
 		return output;
 	}
 	
-	public byte[] globalSearch(String query) throws NoSuchAlgorithmException {
-		byte[] key = messenger.sendSearchRequest(query);
-		this.outstandingSearches.put(key, new ArrayList<BlueCrabSearchResult>());
+	public String globalSearch(String query) throws NoSuchAlgorithmException {
+		String key = BlueCrabScribeSearchContent.genKey(query);
+		this.outstandingSearches.put(key, new ArrayList<BlueCrabSearchResult>());	
+		this.messenger.sendSearchRequest(query, key);
 		return key;
 	}
 	
-	public boolean addSearchResults(byte[] key, ArrayList<BlueCrabSearchResult> results) {
+	public boolean addSearchResults(String key, ArrayList<BlueCrabSearchResult> results) {
+		System.out.println("IN ADD RESULTS!!!");
+		for (BlueCrabSearchResult r : results) {
+			System.out.println(this.hashCode()+" : addSearchResults: "+r.id+" | "+r.digest+ " with key: "+key);
+		}
 		if (this.outstandingSearches.containsKey(key)) {
-			this.outstandingSearches.get(key).addAll(results);
+			System.out.println("WE HAVE FOUND THE KEY CONTAINING NODE");
+			ArrayList<BlueCrabSearchResult> arrT = this.outstandingSearches.get(key);
+			arrT.addAll(results);
+			this.outstandingSearches.put(key, arrT);
 			return true;
 		} else {
 			return false;
@@ -56,7 +69,7 @@ public class BlueCrabSearcher {
 		}
 	}
 	
-	public ArrayList<BlueCrabSearchResult> getSearchResults(byte[] search_key) {
+	public ArrayList<BlueCrabSearchResult> getSearchResults(String search_key) {
 		if (this.outstandingSearches.containsKey(search_key)) {
 			return this.outstandingSearches.get(search_key);
 		} else {

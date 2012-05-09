@@ -11,7 +11,7 @@ import rice.p2p.scribe.ScribeContent;
 public abstract class BlueCrabScribeContent implements ScribeContent{
 	protected BlueCrabMessageType type;
 	protected NodeHandle from;
-	protected byte[] search_key;
+	protected String search_key;
 	
 	public BlueCrabMessageType getType(){
 		return this.type;
@@ -21,7 +21,7 @@ public abstract class BlueCrabScribeContent implements ScribeContent{
 		return this.from;
 	}
 	
-	public byte[] search_key() {
+	public String search_key() {
 		return this.search_key;
 	}
 }

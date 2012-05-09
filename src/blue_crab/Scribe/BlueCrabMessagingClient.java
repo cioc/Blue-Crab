@@ -56,7 +56,8 @@ public class BlueCrabMessagingClient implements ScribeMultiClient, Application {
 		if (((BlueCrabScribeContent)content).from == null) {
 			new Exception("Stack trace").printStackTrace();
 		}
-		if (content instanceof BlueCrabScribeSearchContent) {
+		if (((BlueCrabScribeContent)content).getType() == BlueCrabMessageType.SEARCH) {
+			System.out.println(this.scribeHandle.hashCode()+"RECEIVED SEARCH REQUEST: "+((BlueCrabScribeSearchContent)content).query());
 			//a search
 			try {
 				ArrayList<BlueCrabSearchResult>results = this.localSearcher.localSearch(((BlueCrabScribeSearchContent)content).query());
@@ -69,7 +70,7 @@ public class BlueCrabMessagingClient implements ScribeMultiClient, Application {
 				e.printStackTrace();
 			}
 		}
-		if (content instanceof BlueCrabScribeSearchResultContent) {
+		if (((BlueCrabScribeContent)content).getType() == BlueCrabMessageType.RESULT_RESPONSE) {
 			//a result response - strange
 			System.out.println("WHY ARE SEARCH RESULTS GETTING RECEIVED HERE?");
 		} else {
@@ -83,13 +84,13 @@ public class BlueCrabMessagingClient implements ScribeMultiClient, Application {
 	
 	//multicasts a search query out to the nodes
 	//returns a search key
-	public byte[] sendSearchRequest(String query) throws NoSuchAlgorithmException{
-		BlueCrabScribeSearchContent msg = new BlueCrabScribeSearchContent(endpoint.getLocalNodeHandle(), query);
+	public String sendSearchRequest(String query, String key) throws NoSuchAlgorithmException{
+		BlueCrabScribeSearchContent msg = new BlueCrabScribeSearchContent(endpoint.getLocalNodeHandle(), query, key);
 		scribeHandle.publish(searchTopic, msg);
 		return msg.search_key();
 	}
 	
-	public void sendResultResponseQuery(byte[] search_key, ArrayList<BlueCrabSearchResult> results) {
+	public void sendResultResponseQuery(String search_key, ArrayList<BlueCrabSearchResult> results) {
 		BlueCrabScribeSearchResultContent msg = new BlueCrabScribeSearchResultContent(endpoint.getLocalNodeHandle(), search_key);
 		msg.setResults(results);
 		scribeHandle.anycast(searchTopic, msg);
