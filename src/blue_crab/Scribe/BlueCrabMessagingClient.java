@@ -11,6 +11,7 @@ package blue_crab.Scribe;
  */
 
 import java.io.IOException;
+import java.io.NotSerializableException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -23,6 +24,7 @@ import rice.p2p.scribe.ScribeMultiClient;
 import rice.p2p.scribe.ScribeContent;
 import rice.p2p.scribe.ScribeImpl;
 import rice.p2p.scribe.Topic;
+import rice.p2p.util.rawserialization.JavaSerializationException;
 import rice.pastry.commonapi.PastryIdFactory;
 
 import blue_crab.Search.BlueCrabSearcher;
@@ -57,7 +59,7 @@ public class BlueCrabMessagingClient implements ScribeMultiClient, Application {
 			new Exception("Stack trace").printStackTrace();
 		}
 		if (((BlueCrabScribeContent)content).getType() == BlueCrabMessageType.SEARCH) {
-			System.out.println(this.scribeHandle.hashCode()+"RECEIVED SEARCH REQUEST: "+((BlueCrabScribeSearchContent)content).query());
+			//System.out.println(this.scribeHandle.hashCode()+"RECEIVED SEARCH REQUEST: "+((BlueCrabScribeSearchContent)content).query());
 			//a search
 			try {
 				ArrayList<BlueCrabSearchResult>results = this.localSearcher.localSearch(((BlueCrabScribeSearchContent)content).query());
@@ -72,7 +74,7 @@ public class BlueCrabMessagingClient implements ScribeMultiClient, Application {
 		}
 		if (((BlueCrabScribeContent)content).getType() == BlueCrabMessageType.RESULT_RESPONSE) {
 			//a result response - strange
-			System.out.println("WHY ARE SEARCH RESULTS GETTING RECEIVED HERE?");
+			System.out.println("Result Response incorrectly sent over multicast!");
 		} else {
 			new Exception("Non Standard message received");
 		}

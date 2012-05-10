@@ -48,12 +48,14 @@ public class BlueCrabSearcher {
 	}
 	
 	public boolean addSearchResults(String key, ArrayList<BlueCrabSearchResult> results) {
+		/*
 		System.out.println("IN ADD RESULTS!!!");
 		for (BlueCrabSearchResult r : results) {
 			System.out.println(this.hashCode()+" : addSearchResults: "+r.id+" | "+r.digest+ " with key: "+key);
 		}
+		*/
 		if (this.outstandingSearches.containsKey(key)) {
-			System.out.println("WE HAVE FOUND THE KEY CONTAINING NODE");
+			//System.out.println("WE HAVE FOUND THE KEY CONTAINING NODE");
 			ArrayList<BlueCrabSearchResult> arrT = this.outstandingSearches.get(key);
 			arrT.addAll(results);
 			this.outstandingSearches.put(key, arrT);

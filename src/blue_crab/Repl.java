@@ -62,6 +62,9 @@ public class Repl {
 					return null;
 				}
 			}
+			if (pieces[0].equals("HELP")) {
+				return new Operation("HELP", null);
+			}
 			if (pieces[0].equals("SETF")) {
 				if (line.length() > 5) {
 					String[] fileParts = line.substring(5).split("/");
@@ -106,6 +109,9 @@ public class Repl {
 			} catch (Exception e) {
 				System.err.println("Error during GET operation: "+e.getMessage());
 			}
+		}
+		if (op.type.equals("HELP")) {
+			printHelp();
 		}
 		if (op.type.equals("SET")) {
 			try {
@@ -160,9 +166,18 @@ public class Repl {
 		}
 	}
 	
+	private void printHelp() {
+		System.out.println("SET <key> <val> - set a key to a value");
+		System.out.println("SETF <filepath> - store a file in the cluster.  key will be the filename");
+		System.out.println("GET <key> - get a val from a key");
+		System.out.println("SEARCH <string> - search for string");
+		System.out.println("HELP - the help command");
+		System.out.println("EXIT the program");
+	}
+	
 	public void start() {
 		System.out.println("Welcome to the Blue Crab Console");
-		System.out.println("Options: SET <string> | GET <string>");
+		System.out.println("HELP for options");
 		InputStreamReader console_in = new InputStreamReader(System.in);
 		BufferedReader in = new BufferedReader(console_in);
 		while (1 == 1){

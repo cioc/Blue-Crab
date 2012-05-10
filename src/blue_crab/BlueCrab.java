@@ -156,14 +156,15 @@ public class BlueCrab {
 	
 	public HashMap<Id, String> search(String query, int wait_time) throws NoSuchAlgorithmException, InterruptedException {
 		BlueCrabSearcher searcher = this.search_nodes.get(env.getRandomSource().nextInt(number_of_nodes));
-		System.out.println("SEARCHED TO INITIATE REQUEST: "+searcher.hashCode());
+		System.out.println("Searching...");
+		//System.out.println("SEARCHED TO INITIATE REQUEST: "+searcher.hashCode());
 		String key = searcher.globalSearch(query);
-		System.out.println("INITIAL REQUEST QUERY: "+key.toString());
+		//System.out.println("INITIAL REQUEST QUERY: "+key.toString());
 		env.getTimeSource().sleep(wait_time);
 		ArrayList<BlueCrabSearchResult> results = searcher.getSearchResults(key);
 		HashMap<Id, String>output = new HashMap<Id, String>();
 		for (BlueCrabSearchResult r : results) {
-			if (!(output.containsKey(r.id))) {
+			if ((r != null) && !(output.containsKey(r.id))) {
 				output.put(r.id, r.digest);
 			}
 		}

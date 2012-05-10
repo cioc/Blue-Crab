@@ -79,6 +79,7 @@ import rice.pastry.commonapi.PastryIdFactory;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.IndexNotFoundException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -306,27 +307,31 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
   }
   
   public HashMap<Id, String> search(String query) throws ParseException, IOException{
-	  Query q = new QueryParser(this.search_lucene_version, "data", this.search_analyzer).parse(query);
-	  IndexReader search_reader = IndexReader.open(this.search_index);
-	  IndexSearcher search_searcher = new IndexSearcher(search_reader);
-	  TopScoreDocCollector search_collector = TopScoreDocCollector.create(10, true);
-	  search_searcher.search(q, search_collector);
-	  
-	  ScoreDoc[] results = search_collector.topDocs().scoreDocs;
-	  
-	  HashMap<Id, String> output = new HashMap<Id, String>();
-	  
-	  int l = results.length;
-	  IdFactory idf = new PastryIdFactory(this.environment);
-	  
-	  for (int i = 0; i < l; ++i) {
-		  Document d = search_searcher.doc(results[i].doc);
-		  Id id = idf.buildIdFromToString(d.get("id"));
-		  output.put(id, d.get("data"));
+	  try {
+		  Query q = new QueryParser(this.search_lucene_version, "data", this.search_analyzer).parse(query);
+		  IndexReader search_reader = IndexReader.open(this.search_index);
+		  IndexSearcher search_searcher = new IndexSearcher(search_reader);
+		  TopScoreDocCollector search_collector = TopScoreDocCollector.create(10, true);
+		  search_searcher.search(q, search_collector);
+		  
+		  ScoreDoc[] results = search_collector.topDocs().scoreDocs;
+		  
+		  HashMap<Id, String> output = new HashMap<Id, String>();
+		  
+		  int l = results.length;
+		  IdFactory idf = new PastryIdFactory(this.environment);
+		  
+		  for (int i = 0; i < l; ++i) {
+			  Document d = search_searcher.doc(results[i].doc);
+			  Id id = idf.buildIdFromToString(d.get("id"));
+			  output.put(id, d.get("data"));
+		  }
+		  
+		  search_searcher.close();
+		  return output;   
+	  } catch (IndexNotFoundException e) {
+		  return new HashMap<Id, String>();
 	  }
-	  
-	  search_searcher.close();
-	  return output; 
   }
   
   /*
