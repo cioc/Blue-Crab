@@ -130,6 +130,7 @@ public class BlueCrab {
 			return null;
 		}
 	}
+
 	
 	public Id setFromFile(String path) throws Exception {
 		final StorageObject storageObj = StorageObjectFactory.fromFile(this.local_factory, path);
@@ -192,7 +193,7 @@ public class BlueCrab {
 			env.getTimeSource().sleep(50);
 		}
 		if (c.wasSuccessful()) {
-			return c.getResult().toString();
+			return ((StorageObject)(c.getResult())).getContent();
 		} else {
 			return null;
 		}

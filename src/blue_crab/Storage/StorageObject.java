@@ -16,11 +16,14 @@ public class StorageObject extends ContentHashPastContent{
 		this.content = content;
 		this.path = path;
 	}
+	public String getContent(){
+		return this.content;
+	}
 	public String toString(){
 		if (path == null) {
-			return "StorageObject: "+content;
+			return content;
 		} else {
-			return "StorageObject: "+path;
+			return path;
 		}
 	}
 	
