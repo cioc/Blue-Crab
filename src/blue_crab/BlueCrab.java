@@ -24,6 +24,7 @@ import java.lang.IndexOutOfBoundsException;
 import java.util.HashMap;
 import org.apache.lucene.queryParser.ParseException;
 
+import blue_crab.Past.BlueCrabPastImpl;
 import blue_crab.Storage.BlueCrabIndexingPersistentStorage;
 import blue_crab.Storage.StorageObject;
 import blue_crab.Storage.StorageObjectFactory;
@@ -66,7 +67,7 @@ public class BlueCrab {
 			PastryIdFactory idf = new rice.pastry.commonapi.PastryIdFactory(env);
 			String storageDirectory = storage_directory+node.getId().hashCode();
 			Storage stor = new BlueCrabIndexingPersistentStorage(idf, storageDirectory, 4 * 1024 * 1024, node.getEnvironment());
-			Past past = new PastImpl(node, new StorageManagerImpl(idf, stor, new LRUCache(new MemoryStorage(idf), 512 * 1024, node.getEnvironment())), replicas,"");
+			Past past = new BlueCrabPastImpl(node, new StorageManagerImpl(idf, stor, new LRUCache(new MemoryStorage(idf), 512 * 1024, node.getEnvironment())), replicas,"");
 			BlueCrabSearcher searcher = new BlueCrabSearcher(node, (BlueCrabIndexingPersistentStorage)stor);
 			nodes.add(past);
 			search_nodes.add(searcher);
@@ -99,17 +100,20 @@ public class BlueCrab {
 		}
 	}
 	private Id set(final StorageObject storageObj) throws Exception{
-		PastImpl p = (PastImpl)this.nodes.get(env.getRandomSource().nextInt(number_of_nodes));
+		BlueCrabPastImpl p = (BlueCrabPastImpl)this.nodes.get(env.getRandomSource().nextInt(number_of_nodes));
 		
-		BlueCrabContinuation<Boolean[], Exception> c = new BlueCrabContinuation<Boolean[], Exception>(){
-			public void receiveResult(Boolean[] results){
+		BlueCrabContinuation<ArrayList<Pair<NodeHandle, Boolean>>, Exception> c = new BlueCrabContinuation<ArrayList<Pair<NodeHandle, Boolean>>, Exception>(){
+			public void receiveResult(ArrayList<Pair<NodeHandle, Boolean>> results){
 				this.received_response = true;
 				this.success = true;
 				int numSuccessfulStores = 0;
-				for (int ctr = 0; ctr < results.length; ctr++){
-					if (results[ctr].booleanValue())
+				int l = results.size();
+				for (int ctr = 0; ctr < l; ctr++){
+					Pair<NodeHandle, Boolean> res = results.get(ctr);
+					if (res.getSecond())
 						numSuccessfulStores++;
 				}
+
 			}
 			public void receiveException(Exception result){
 				this.received_response = true;

@@ -5,6 +5,9 @@ package blue_crab.Storage;
  * @author Charles Cary
  * I imported the code rather than extending the class because the actual functionality
  * will change as the code is modified.  
+ * 
+ * Furthermore, the class itself is not implemted in such a way as to make it easy to 
+ * extend.   
  */
 
 /*******************************************************************************
