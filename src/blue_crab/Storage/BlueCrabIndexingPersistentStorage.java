@@ -82,10 +82,12 @@ import rice.pastry.commonapi.PastryIdFactory;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexNotFoundException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queryParser.ParseException;
 import org.apache.lucene.queryParser.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
@@ -299,13 +301,38 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
 		  File f = getFile(id);
 		  Serializable data = readData(f);
 		  Document doc = new Document();
-		  /*
-		   * TODO: this is where tika would come in
-		   */
-		  doc.add(new Field("id", id.toStringFull(), Field.Store.YES, Field.Index.NOT_ANALYZED));
+		  doc.add(new Field("id", id.toStringFull(), Field.Store.YES, Field.Index.ANALYZED));
 		  doc.add(new Field("data", data.toString(), Field.Store.YES, Field.Index.ANALYZED));
 		  search_writer.addDocument(doc);
 		  this.search_indexed_already.add(id.toStringFull());
+	  }
+  }
+  public boolean updateIndexByIdForFile(String filepath, String filename, Id id) throws CorruptIndexException, IOException {
+	  if (this.metadata.containsKey(id) && (this.search_indexed_already.contains(id.toStringFull()))) {
+		  /*
+		   * TODO: this is where tika would come in
+		   */
+		  File f = getFile(id);
+		  Serializable data = readData(f);
+		  FileReader inputStream = new FileReader(filepath);
+		  StringBuilder strbld = new StringBuilder();
+		  char[] buf = new char[8192];
+		  int read = 0;
+		  while (read >= 0) {
+		    strbld.append(buf, 0, read);
+			read = inputStream.read(buf);
+		  }
+		  String val = strbld.toString();
+		  Document doc = new Document();
+		  doc.add(new Field("id", id.toStringFull(), Field.Store.YES, Field.Index.ANALYZED));
+		  doc.add(new Field("data", data.toString(), Field.Store.YES, Field.Index.ANALYZED));
+		  doc.add(new Field("filename", filename, Field.Store.YES, Field.Index.ANALYZED));
+		  doc.add(new Field("text", val, Field.Store.YES, Field.Index.ANALYZED));
+		  Term t = new Term("id", id.toStringFull());
+		  search_writer.updateDocument(t, doc);
+		  return true;
+	  } else {
+		  return false;
 	  }
   }
   
@@ -319,6 +346,11 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
 		  
 		  ScoreDoc[] results = search_collector.topDocs().scoreDocs;
 		  
+		  Query q2 = new QueryParser(this.search_lucene_version, "text", this.search_analyzer).parse(query);
+		  search_searcher.search(q2, search_collector);
+		  
+		  ScoreDoc[] fileresults = search_collector.topDocs().scoreDocs;
+		  
 		  HashMap<Id, String> output = new HashMap<Id, String>();
 		  
 		  int l = results.length;
@@ -328,6 +360,14 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
 			  Document d = search_searcher.doc(results[i].doc);
 			  Id id = idf.buildIdFromToString(d.get("id"));
 			  output.put(id, d.get("data"));
+		  }
+		  
+		  int l2 = results.length;
+		  
+		  for (int i = 0; i < l2; ++i) {
+			  Document d = search_searcher.doc(fileresults[i].doc);
+			  Id id = idf.buildIdFromToString(d.get("id"));
+			  output.put(id, d.get("filepath"));
 		  }
 		  
 		  search_searcher.close();
@@ -421,7 +461,7 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
   }
 
   /**
-   * Makes the object persistent to disk and stored permanantly
+   * Makes the object persistent to disk and stored permanently
    *
    * If the object is already persistent, this method will
    * simply update the object's serialized image.
@@ -492,7 +532,7 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
         	  /*
         	   * PERFORM INDEXING
         	   */
-        	  BlueCrabIndexingPersistentStorage.this.indexDocuments();
+        	  BlueCrabIndexingPersistentStorage.this.indexDocuments();  
             dirty.add(objFile.getParentFile());
           }
         }

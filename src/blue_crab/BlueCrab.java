@@ -1,5 +1,6 @@
 package blue_crab;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.*;
 import java.security.NoSuchAlgorithmException;
@@ -12,6 +13,7 @@ import java.util.Enumeration;
 import rice.Continuation;
 import rice.environment.Environment;
 import rice.p2p.commonapi.Id;
+import rice.p2p.commonapi.Node;
 import rice.p2p.commonapi.NodeHandle;
 import rice.p2p.past.*;
 import rice.pastry.*;
@@ -23,8 +25,10 @@ import rice.persistence.*;
 import java.lang.IndexOutOfBoundsException;
 import java.util.HashMap;
 import org.apache.lucene.queryParser.ParseException;
+import org.mpisws.p2p.transport.commonapi.IdFactory;
 
 import blue_crab.Past.BlueCrabPastImpl;
+import blue_crab.Storage.BlueCrabFileStore;
 import blue_crab.Storage.BlueCrabIndexingPersistentStorage;
 import blue_crab.Storage.StorageObject;
 import blue_crab.Storage.StorageObjectFactory;
@@ -35,6 +39,7 @@ import blue_crab.Search.BlueCrabSearcher;
 public class BlueCrab {
 	private Vector<Past> nodes;
 	private Vector<BlueCrabSearcher> search_nodes;
+	private Vector<BlueCrabFileStore> file_storage_nodes;
 	//private Vector<>
 	private final Environment env;
 	private NodeIdFactory node_id_factory;
@@ -46,6 +51,7 @@ public class BlueCrab {
 		env = new Environment();
 		nodes = new Vector<Past>();
 		this.search_nodes = new Vector<BlueCrabSearcher>();
+		this.file_storage_nodes = new Vector<BlueCrabFileStore>();
 		node_id_factory = new RandomNodeIdFactory(env);
 		pastry_node_factory = new SocketPastryNodeFactory(node_id_factory, port, env);
 		local_factory = new rice.pastry.commonapi.PastryIdFactory(env);
@@ -71,6 +77,9 @@ public class BlueCrab {
 			BlueCrabSearcher searcher = new BlueCrabSearcher(node, (BlueCrabIndexingPersistentStorage)stor);
 			nodes.add(past);
 			search_nodes.add(searcher);
+			//final String directory, Node node, final IdFactory factory, final BlueCrabIndexingPersistentStorage storage
+			BlueCrabFileStore file_store = new BlueCrabFileStore(storageDirectory+node.getId().toStringFull(), (Node)node, (IdFactory)idf, (BlueCrabIndexingPersistentStorage)stor);
+			this.file_storage_nodes.add(file_store);
 			if (i == 0){
 				node.boot(Collections.EMPTY_LIST);
 			} else {
@@ -136,9 +145,53 @@ public class BlueCrab {
 	}
 
 	
-	public Id setFromFile(String path) throws Exception {
-		final StorageObject storageObj = StorageObjectFactory.fromFile(this.local_factory, path);
-		return this.set(storageObj);
+	public Id setFromFile(final String path) throws Exception {
+		final StorageObject storageObj = new StorageObject(this.local_factory.buildId(path), path);
+		final int index_of_node = env.getRandomSource().nextInt(number_of_nodes);
+		BlueCrabPastImpl p = (BlueCrabPastImpl)this.nodes.get(index_of_node);
+		
+		BlueCrabContinuation<ArrayList<Pair<NodeHandle, Boolean>>, Exception> c = new BlueCrabContinuation<ArrayList<Pair<NodeHandle, Boolean>>, Exception>(){
+			public void receiveResult(ArrayList<Pair<NodeHandle, Boolean>> results){
+				this.received_response = true;
+				this.success = true;
+				int numSuccessfulStores = 0;
+				int l = results.size();
+				for (int ctr = 0; ctr < l; ctr++){
+					Pair<NodeHandle, Boolean> res = results.get(ctr);
+					if (res.getSecond()) {
+						numSuccessfulStores++;
+						BlueCrabFileStore bcfs = file_storage_nodes.get(index_of_node);
+						try {
+							bcfs.sendFileDirect(res.getFirst(), path, storageObj.getId());
+						} catch (FileNotFoundException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+				}
+
+			}
+			public void receiveException(Exception result){
+				this.received_response = true;
+				this.success = false;
+				System.out.println("Error storing "+storageObj);
+				result.printStackTrace();
+			}
+		};
+		p.insert(storageObj, c);	
+		while (!c.receivedResponse()){
+			env.getTimeSource().sleep(50);
+		}
+		if (c.wasSuccessful()) {
+			//BlueCrabIndexingPersistentStorage storage_reference = (BlueCrabIndexingPersistentStorage)p.getStorageManager().getStorage();
+			//storage_reference.indexDocuments();
+			return storageObj.getId();
+		} else {
+			return null;
+		}
 	}
 	
 	public Id setFromString(final String val) throws Exception {

@@ -28,6 +28,7 @@ import rice.p2p.commonapi.RouteMessage;
 import rice.p2p.commonapi.appsocket.*;
 import rice.p2p.util.rawserialization.SimpleInputBuffer;
 import rice.p2p.util.rawserialization.SimpleOutputBuffer;
+import rice.pastry.commonapi.PastryIdFactory;
 
 /*
  *  manages file store
@@ -38,17 +39,18 @@ import rice.p2p.util.rawserialization.SimpleOutputBuffer;
 public class BlueCrabFileStore implements Application{
 	private static final long serialVersionUID = 45738L;
 	
-	private String storage_directory;
+	private final String storage_directory;
 	
 	protected Endpoint endpoint;
 	protected Node node;
 	protected FileTransfer fileTransfer;
+	protected final BlueCrabIndexingPersistentStorage storage;
 	
-	
-	public BlueCrabFileStore(String directory, Node node, final IdFactory factory) {
+	public BlueCrabFileStore(final String directory, Node node, final IdFactory factory, final BlueCrabIndexingPersistentStorage storage) {
 		this.storage_directory = directory;
 		this.endpoint = node.buildEndpoint(this, "fileStoreInstance");
 		this.node = node;
+		this.storage = storage;
 		
 		endpoint.accept(new AppSocketReceiver() {
 			public void receiveSocket(AppSocket socket) {
@@ -59,11 +61,22 @@ public class BlueCrabFileStore implements Application{
 					}
 					public void fileReceived(File f, ByteBuffer metadata) {
 						try {
-							//TODO - THIS IS WHERE WE SAVE THE FILE
-							//TODO - THIS IS WHERE INDEXING IS TRIGGERED 
-							String originalFileName = new SimpleInputBuffer(metadata).readUTF();
-							//File dest = new File("delme2.txt");
-							
+							String metastr = new SimpleInputBuffer(metadata).readUTF();
+							String[] pieces = metastr.split("|");
+							String id_str = "";
+							String file_name_str = "";
+							if (pieces.length > 0) {
+								id_str = pieces[pieces.length - 1];
+								for (int i = 0; i < (pieces.length - 1); ++i) {
+									file_name_str += pieces[i];
+								}
+							} else {
+								throw new IOException();
+							}
+							File dest = new File(storage_directory+"/"+id_str);
+							f.renameTo(dest);
+							Id id = ((PastryIdFactory)factory).buildId(id_str);
+							storage.updateIndexByIdForFile(storage_directory+"/"+id_str, file_name_str, id);
 						}
 						catch (IOException e) {
 							System.err.println("IOException in BlueCrabFileSTore.fileReceived");
@@ -103,7 +116,7 @@ public class BlueCrabFileStore implements Application{
 		}
 	}
 		
-	public void sendFileDirect(NodeHandle nh, final String filePath) throws FileNotFoundException, IOException {
+	public void sendFileDirect(NodeHandle nh, final String filePath, final Id id) throws FileNotFoundException, IOException {
 		endpoint.connect(nh, new AppSocketReceiver(){
 			public void receiveSocket(AppSocket socket) throws FileNotFoundException, IOException {
 				FileTransfer sender = new FileTransferImpl(socket, null, node.getEnvironment());
@@ -115,7 +128,7 @@ public class BlueCrabFileStore implements Application{
 					throw new FileNotFoundException();
 				}
 				SimpleOutputBuffer sob = new SimpleOutputBuffer();
-				sob.writeUTF(f.getName());
+				sob.writeUTF(f.getName() + "|"+ id.toStringFull());
 					
 				sender.sendFile(f, sob.getByteBuffer(), (byte)2, new Continuation<FileReceipt, Exception>(){
 					public void receiveException(Exception e) {
