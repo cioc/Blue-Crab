@@ -78,7 +78,8 @@ public class BlueCrab {
 			nodes.add(past);
 			search_nodes.add(searcher);
 			//final String directory, Node node, final IdFactory factory, final BlueCrabIndexingPersistentStorage storage
-			BlueCrabFileStore file_store = new BlueCrabFileStore(storageDirectory+node.getId().toStringFull(), (Node)node, (IdFactory)idf, (BlueCrabIndexingPersistentStorage)stor);
+			//public BlueCrabFileStore(final String directory, Node node, final IdFactory factory, final BlueCrabIndexingPersistentStorage storage)
+			BlueCrabFileStore file_store = new BlueCrabFileStore(storageDirectory+node.getId().toStringFull(), (Node)node, idf, (BlueCrabIndexingPersistentStorage)stor);
 			this.file_storage_nodes.add(file_store);
 			if (i == 0){
 				node.boot(Collections.EMPTY_LIST);
@@ -144,7 +145,6 @@ public class BlueCrab {
 		}
 	}
 
-	
 	public Id setFromFile(final String path) throws Exception {
 		final StorageObject storageObj = new StorageObject(this.local_factory.buildId(path), path);
 		final int index_of_node = env.getRandomSource().nextInt(number_of_nodes);

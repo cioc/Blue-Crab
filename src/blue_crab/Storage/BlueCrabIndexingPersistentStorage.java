@@ -362,7 +362,7 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
 			  output.put(id, d.get("data"));
 		  }
 		  
-		  int l2 = results.length;
+		  int l2 = fileresults.length;
 		  
 		  for (int i = 0; i < l2; ++i) {
 			  Document d = search_searcher.doc(fileresults[i].doc);
