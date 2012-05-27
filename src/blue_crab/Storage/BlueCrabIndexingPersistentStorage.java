@@ -308,12 +308,14 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
 	  }
   }
   public boolean updateIndexByIdForFile(String filepath, String filename, Id id) throws CorruptIndexException, IOException {
+	  //System.out.println("Entered update with id: "+id.toStringFull());
 	  if (this.metadata.containsKey(id) && (this.search_indexed_already.contains(id.toStringFull()))) {
 		  /*
 		   * TODO: this is where tika would come in
 		   */
 		  File f = getFile(id);
 		  Serializable data = readData(f);
+		  
 		  FileReader inputStream = new FileReader(filepath);
 		  StringBuilder strbld = new StringBuilder();
 		  char[] buf = new char[8192];
@@ -324,12 +326,14 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
 		  }
 		  String val = strbld.toString();
 		  Document doc = new Document();
+		  //System.out.println("Updating...RECORD with val: "+val);
 		  doc.add(new Field("id", id.toStringFull(), Field.Store.YES, Field.Index.ANALYZED));
 		  doc.add(new Field("data", data.toString(), Field.Store.YES, Field.Index.ANALYZED));
 		  doc.add(new Field("filename", filename, Field.Store.YES, Field.Index.ANALYZED));
 		  doc.add(new Field("text", val, Field.Store.YES, Field.Index.ANALYZED));
 		  Term t = new Term("id", id.toStringFull());
-		  search_writer.updateDocument(t, doc);
+		  this.search_writer.updateDocument(t, doc);
+		  this.search_writer.commit();
 		  return true;
 	  } else {
 		  return false;
@@ -338,6 +342,7 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
   
   public HashMap<Id, String> search(String query) throws ParseException, IOException{
 	  try {
+		  HashMap<Id, String> output = new HashMap<Id, String>();
 		  Query q = new QueryParser(this.search_lucene_version, "data", this.search_analyzer).parse(query);
 		  IndexReader search_reader = IndexReader.open(this.search_index);
 		  IndexSearcher search_searcher = new IndexSearcher(search_reader);
@@ -346,12 +351,6 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
 		  
 		  ScoreDoc[] results = search_collector.topDocs().scoreDocs;
 		  
-		  Query q2 = new QueryParser(this.search_lucene_version, "text", this.search_analyzer).parse(query);
-		  search_searcher.search(q2, search_collector);
-		  
-		  ScoreDoc[] fileresults = search_collector.topDocs().scoreDocs;
-		  
-		  HashMap<Id, String> output = new HashMap<Id, String>();
 		  
 		  int l = results.length;
 		  IdFactory idf = new PastryIdFactory(this.environment);
@@ -362,12 +361,20 @@ public class BlueCrabIndexingPersistentStorage implements Storage {
 			  output.put(id, d.get("data"));
 		  }
 		  
+		  Query q2 = new QueryParser(this.search_lucene_version, "text", this.search_analyzer).parse(query);
+		  //System.out.println("Query 2 param: "+query);
+		  search_searcher.search(q2, search_collector);
+		  
+		  ScoreDoc[] fileresults = search_collector.topDocs().scoreDocs;
+		  
 		  int l2 = fileresults.length;
+		  
+		  //System.out.println("text search results: "+l2);
 		  
 		  for (int i = 0; i < l2; ++i) {
 			  Document d = search_searcher.doc(fileresults[i].doc);
 			  Id id = idf.buildIdFromToString(d.get("id"));
-			  output.put(id, d.get("filepath"));
+			  output.put(id, d.get("filename"));
 		  }
 		  
 		  search_searcher.close();

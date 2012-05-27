@@ -48,6 +48,7 @@ public class BlueCrabFileStore implements Application{
 	
 	public BlueCrabFileStore(final String directory, Node node, final IdFactory factory, final BlueCrabIndexingPersistentStorage storage) {
 		this.storage_directory = directory;
+		new File(this.storage_directory).mkdir();
 		this.endpoint = node.buildEndpoint(this, "fileStoreInstance");
 		this.node = node;
 		this.storage = storage;
@@ -62,10 +63,12 @@ public class BlueCrabFileStore implements Application{
 					public void fileReceived(File f, ByteBuffer metadata) {
 						try {
 							String metastr = new SimpleInputBuffer(metadata).readUTF();
-							String[] pieces = metastr.split("|");
+							String[] pieces = metastr.split(":");
+							//System.out.println("pieces 0: "+pieces[0]+ " pieces 1: "+pieces[1]);
 							String id_str = "";
 							String file_name_str = "";
 							if (pieces.length > 0) {
+								
 								id_str = pieces[pieces.length - 1];
 								for (int i = 0; i < (pieces.length - 1); ++i) {
 									file_name_str += pieces[i];
@@ -75,7 +78,8 @@ public class BlueCrabFileStore implements Application{
 							}
 							File dest = new File(storage_directory+"/"+id_str);
 							f.renameTo(dest);
-							Id id = ((PastryIdFactory)factory).buildId(id_str);
+							Id id = factory.buildIdFromToString(id_str);
+							//System.out.println("Storing file: "+file_name_str+ " with id: "+id.toStringFull());
 							storage.updateIndexByIdForFile(storage_directory+"/"+id_str, file_name_str, id);
 						}
 						catch (IOException e) {
@@ -128,7 +132,7 @@ public class BlueCrabFileStore implements Application{
 					throw new FileNotFoundException();
 				}
 				SimpleOutputBuffer sob = new SimpleOutputBuffer();
-				sob.writeUTF(f.getName() + "|"+ id.toStringFull());
+				sob.writeUTF(f.getName() + ":"+ id.toStringFull());
 					
 				sender.sendFile(f, sob.getByteBuffer(), (byte)2, new Continuation<FileReceipt, Exception>(){
 					public void receiveException(Exception e) {

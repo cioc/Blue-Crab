@@ -79,7 +79,7 @@ public class BlueCrab {
 			search_nodes.add(searcher);
 			//final String directory, Node node, final IdFactory factory, final BlueCrabIndexingPersistentStorage storage
 			//public BlueCrabFileStore(final String directory, Node node, final IdFactory factory, final BlueCrabIndexingPersistentStorage storage)
-			BlueCrabFileStore file_store = new BlueCrabFileStore(storageDirectory+node.getId().toStringFull(), (Node)node, idf, (BlueCrabIndexingPersistentStorage)stor);
+			BlueCrabFileStore file_store = new BlueCrabFileStore(storageDirectory+"/"+node.getId().toStringFull()+"filestore", (Node)node, idf, (BlueCrabIndexingPersistentStorage)stor);
 			this.file_storage_nodes.add(file_store);
 			if (i == 0){
 				node.boot(Collections.EMPTY_LIST);
