@@ -18,7 +18,6 @@ public class FileStoreTest {
 	int test_port = 9001;
 	BlueCrab crab;
 	
-	
 	@Test
 	public void test() throws Exception {
 		this.crab = new BlueCrab(replicas, test_port, null, test_node_count, storage_directory);

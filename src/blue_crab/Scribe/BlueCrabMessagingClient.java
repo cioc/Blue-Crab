@@ -35,14 +35,15 @@ import blue_crab.Search.BlueCrabSearcher;
 public class BlueCrabMessagingClient implements ScribeMultiClient, Application {	
 	private Scribe scribeHandle;
 	private Topic searchTopic;
+	private Topic fileRequestTopic;
 	protected Endpoint endpoint; 
 	private BlueCrabSearcher localSearcher;
-	
 	
 	public BlueCrabMessagingClient(Node node, BlueCrabSearcher localSearcher){
 		this.endpoint = node.buildEndpoint(this, "myinstance");
 		this.scribeHandle = new ScribeImpl(node, "scribeInstance");
 		this.searchTopic = new Topic(new PastryIdFactory(node.getEnvironment()), "Blue Crab Search Network");
+		this.fileRequestTopic = new Topic(new PastryIdFactory(node.getEnvironment()), "Blue Crab File Request Network");
 		this.endpoint.register();
 		this.localSearcher = localSearcher;
 	}
@@ -51,6 +52,7 @@ public class BlueCrabMessagingClient implements ScribeMultiClient, Application {
 	 */
 	public void subscribe(){
 		((ScribeImpl)scribeHandle).subscribe(searchTopic, this);
+		((ScribeImpl)scribeHandle).subscribe(fileRequestTopic, this);
 	}
 	
 	//MUTLICAST RECEIVED
@@ -72,6 +74,11 @@ public class BlueCrabMessagingClient implements ScribeMultiClient, Application {
 				e.printStackTrace();
 			}
 		}
+		if (((BlueCrabScribeContent)content).getType() == BlueCrabMessageType.FILE_REQUEST) {
+			//file request received
+			System.out.println("Result Response incorrectly sent over multicast!");
+			//TODO - IMPLEMENT
+		} 
 		if (((BlueCrabScribeContent)content).getType() == BlueCrabMessageType.RESULT_RESPONSE) {
 			//a result response - strange
 			System.out.println("Result Response incorrectly sent over multicast!");
@@ -96,6 +103,10 @@ public class BlueCrabMessagingClient implements ScribeMultiClient, Application {
 		BlueCrabScribeSearchResultContent msg = new BlueCrabScribeSearchResultContent(endpoint.getLocalNodeHandle(), search_key);
 		msg.setResults(results);
 		scribeHandle.anycast(searchTopic, msg);
+	}
+	public void sendFileRequest(Id file_request) {
+		BlueCrabFileRequestContent msg = new BlueCrabFileRequestContent(endpoint.getLocalNodeHandle(), file_request);
+		scribeHandle.publish(this.fileRequestTopic, msg);
 	}
 	
 	//ANYCAST RECIEVED

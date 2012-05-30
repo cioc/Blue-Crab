@@ -1,5 +1,6 @@
 package blue_crab;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.*;
@@ -229,6 +230,65 @@ public class BlueCrab {
 		return output;
 	}
 	
+	public File getFromFile(final Id key) throws InterruptedException {
+		final int node_select = env.getRandomSource().nextInt(number_of_nodes);
+		Past p = (Past)this.nodes.get(node_select);
+		final BlueCrabFileStore fs =  file_storage_nodes.get(node_select);
+		
+		BlueCrabContinuation<Object, Exception> c = new BlueCrabContinuation<Object, Exception>(){
+			public void receiveResult(Object o){
+				PastContentHandle[] handles = (PastContentHandle[]) o;
+				
+				boolean found_result = false;
+				int index = 0;
+				while (!found_result && index < handles.length) {
+					NodeHandle nh = handles[index].getNodeHandle();
+					try {
+						fs.getFileRemote(nh, key);
+					} catch (InterruptedException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					//TODO - THIS SHOULD BE REIMPLEMNTED IN A NONBLOCKING MANNER
+					int counter = 0;
+					while (fs.searchingForFile(key) && counter < 10000) {
+						counter += 25;
+						try {
+							this.wait(25);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+					File result = fs.getFileFromCache(key);
+					if (result != null) {
+						this.success = true;
+						this.resultFile = result;
+					} else {
+						this.success = false;
+					}
+					index += 1;
+				}
+				this.received_response = true;
+			}
+			public void receiveException(Exception result){
+				System.out.println("Error looking up. "+key);
+				this.received_response = true;
+				this.success = false;
+				result.printStackTrace();
+			}
+		};
+		p.lookupHandles(key, 4, c);
+		while (!c.receivedResponse()){
+			env.getTimeSource().sleep(50);
+		}
+		if (c.wasSuccessful()) {
+			return c.resultFile;
+		} else {
+			return null;
+		}
+	}
+	
 	public String get(final Id key) throws Exception {		
 		Past p = (Past)this.nodes.get(env.getRandomSource().nextInt(number_of_nodes));
 		
@@ -251,6 +311,7 @@ public class BlueCrab {
 		}
 		if (c.wasSuccessful()) {
 			return ((StorageObject)(c.getResult())).getContent();
+			
 		} else {
 			return null;
 		}
