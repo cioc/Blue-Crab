@@ -39,9 +39,9 @@ import blue_crab.Scribe.BlueCrabSearchResult;
 import blue_crab.Search.BlueCrabSearcher;
 
 public class BlueCrab {
-	private Vector<Past> nodes;
-	private Vector<BlueCrabSearcher> search_nodes;
-	private Vector<BlueCrabFileStore> file_storage_nodes;
+	private Past node;
+	private BlueCrabSearcher search_node;
+	private BlueCrabFileStore file_storage_node;
 	//private Vector<>
 	private final Environment env;
 	private NodeIdFactory node_id_factory;
@@ -49,15 +49,18 @@ public class BlueCrab {
 	private PastryIdFactory local_factory;
 	private int number_of_nodes; 
 	
-	public BlueCrab(int replicas, int port, String hostname, int node_count, String storage_directory) throws Exception {
+	public BlueCrab(int replicas, int port, String hostname, int node_count, String storage_directory, boolean root) throws Exception {
 		env = new Environment();
-		nodes = new Vector<Past>();
+		/*
+		nodes = new Past>();
 		this.search_nodes = new Vector<BlueCrabSearcher>();
 		this.file_storage_nodes = new Vector<BlueCrabFileStore>();
+		*/
 		node_id_factory = new RandomNodeIdFactory(env);
 		pastry_node_factory = new SocketPastryNodeFactory(node_id_factory, port, env);
 		local_factory = new rice.pastry.commonapi.PastryIdFactory(env);
 		number_of_nodes = node_count;
+		//TODO - THIS NEEDS TO BE TOTALLY REWRITTEN
 		InetAddress bootaddr;
 		if (hostname == null) {
 			bootaddr = BlueCrabIPDetector.findBootAddr();
@@ -70,49 +73,26 @@ public class BlueCrab {
 		}
 		InetSocketAddress bootaddress = new InetSocketAddress(bootaddr, port);
 			
-		for (int i = 0; i < node_count; ++i) {
 			PastryNode node = this.pastry_node_factory.newNode();
 			PastryIdFactory idf = new rice.pastry.commonapi.PastryIdFactory(env);
 			String storageDirectory = storage_directory+node.getId().hashCode();
 			Storage stor = new BlueCrabIndexingPersistentStorage(idf, storageDirectory, 4 * 1024 * 1024, node.getEnvironment());
-			Past past = new BlueCrabPastImpl(node, new StorageManagerImpl(idf, stor, new LRUCache(new MemoryStorage(idf), 512 * 1024, node.getEnvironment())), replicas,"");
+			this.node = new BlueCrabPastImpl(node, new StorageManagerImpl(idf, stor, new LRUCache(new MemoryStorage(idf), 512 * 1024, node.getEnvironment())), replicas,"");
 			BlueCrabSearcher searcher = new BlueCrabSearcher(node, (BlueCrabIndexingPersistentStorage)stor);
-			nodes.add(past);
-			search_nodes.add(searcher);
+			search_node = searcher;
 			//final String directory, Node node, final IdFactory factory, final BlueCrabIndexingPersistentStorage storage
 			//public BlueCrabFileStore(final String directory, Node node, final IdFactory factory, final BlueCrabIndexingPersistentStorage storage)
 			BlueCrabFileStore file_store = new BlueCrabFileStore(storageDirectory+"/"+node.getId().toStringFull()+"filestore", (Node)node, idf, (BlueCrabIndexingPersistentStorage)stor);
-			this.file_storage_nodes.add(file_store);
-			if (i == 0){
+			this.file_storage_node = file_store;
+			if (root){
 				node.boot(Collections.EMPTY_LIST);
 			} else {
 				node.boot(bootaddress);
 			}
-			synchronized(node){
-				while(!node.isReady() && !node.joinFailed()){
-					node.wait(500);
-					
-					if (node.joinFailed()){
-						throw new IOException("Could not join the FreePastry Ring. Reason"+node.joinFailedReason());
-					}
-				}
-			}
-			
-			System.out.println("Finished creating new Node "+i + " | " + node);
-		}
-		
-		System.out.println("Waiting for system to fully boot...");
-		env.getTimeSource().sleep(5000);
-		
-		//GET ALL OF OUR SEARCH NODES GOING
-		Iterator<BlueCrabSearcher> i = search_nodes.iterator();
-		while (i.hasNext()) {
-			BlueCrabSearcher t = i.next();
-			t.subscribe();
-		}
+		this.search_node.subscribe();
 	}
 	private Id set(final StorageObject storageObj) throws Exception{
-		BlueCrabPastImpl p = (BlueCrabPastImpl)this.nodes.get(env.getRandomSource().nextInt(number_of_nodes));
+		BlueCrabPastImpl p = (BlueCrabPastImpl)node;
 		
 		BlueCrabContinuation<ArrayList<Pair<NodeHandle, Boolean>>, Exception> c = new BlueCrabContinuation<ArrayList<Pair<NodeHandle, Boolean>>, Exception>(){
 			public void receiveResult(ArrayList<Pair<NodeHandle, Boolean>> results){
@@ -150,7 +130,8 @@ public class BlueCrab {
 	public Id setFromFile(final String path) throws Exception {
 		final StorageObject storageObj = new StorageObject(this.local_factory.buildId(path), path);
 		final int index_of_node = env.getRandomSource().nextInt(number_of_nodes);
-		BlueCrabPastImpl p = (BlueCrabPastImpl)this.nodes.get(index_of_node);
+		final BlueCrabFileStore fs = this.file_storage_node;
+		BlueCrabPastImpl p = (BlueCrabPastImpl)this.node;
 		
 		BlueCrabContinuation<ArrayList<Pair<NodeHandle, Boolean>>, Exception> c = new BlueCrabContinuation<ArrayList<Pair<NodeHandle, Boolean>>, Exception>(){
 			public void receiveResult(ArrayList<Pair<NodeHandle, Boolean>> results){
@@ -162,7 +143,7 @@ public class BlueCrab {
 					Pair<NodeHandle, Boolean> res = results.get(ctr);
 					if (res.getSecond()) {
 						numSuccessfulStores++;
-						BlueCrabFileStore bcfs = file_storage_nodes.get(index_of_node);
+						BlueCrabFileStore bcfs = fs;
 						try {
 							bcfs.sendFileDirect(res.getFirst(), path, storageObj.getId());
 						} catch (FileNotFoundException e) {
@@ -215,7 +196,7 @@ public class BlueCrab {
 	*/
 	
 	public HashMap<Id, String> search(String query, int wait_time) throws NoSuchAlgorithmException, InterruptedException {
-		BlueCrabSearcher searcher = this.search_nodes.get(env.getRandomSource().nextInt(number_of_nodes));
+		BlueCrabSearcher searcher = this.search_node;
 		System.out.println("Searching...");
 		//System.out.println("SEARCHED TO INITIATE REQUEST: "+searcher.hashCode());
 		String key = searcher.globalSearch(query);
@@ -233,8 +214,8 @@ public class BlueCrab {
 	
 	public File getFile(final Id key) throws InterruptedException {
 		final int node_select = env.getRandomSource().nextInt(number_of_nodes);
-		Past p = (Past)this.nodes.get(node_select);
-		final BlueCrabFileStore fs =  file_storage_nodes.get(node_select);
+		Past p = (Past)this.node;
+		final BlueCrabFileStore fs =  file_storage_node;
 		
 		BlueCrabContinuation<Object, Exception> c = new BlueCrabContinuation<Object, Exception>(){
 			public void receiveResult(Object o){
@@ -296,7 +277,7 @@ public class BlueCrab {
 	}
 	
 	public String get(final Id key) throws Exception {		
-		Past p = (Past)this.nodes.get(env.getRandomSource().nextInt(number_of_nodes));
+		Past p = (Past)node;
 		
 		BlueCrabContinuation<PastContent, Exception> c = new BlueCrabContinuation<PastContent, Exception>(){
 			public void receiveResult(PastContent result){
@@ -329,8 +310,14 @@ public class BlueCrab {
 		String storage_directory = "/home/charles/bluecrab/";
 		int test_node_count = 10;
 		int test_port = 9001;
+		boolean root = false;
+		if (args.length > 1) {
+			if (args[1].equals("root")) {
+				root = true;
+			}
+		}
 		try {
-			BlueCrab crab = new BlueCrab(replicas, test_port, null, test_node_count, storage_directory);
+			BlueCrab crab = new BlueCrab(replicas, test_port, null, test_node_count, storage_directory, root);
 			Repl repl = new Repl(crab);
 			repl.start();
 			System.exit(0);
