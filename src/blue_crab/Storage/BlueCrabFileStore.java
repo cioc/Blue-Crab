@@ -186,18 +186,23 @@ public class BlueCrabFileStore implements Application{
 	
 	public void getFileRemote(NodeHandle nh, final Id id) throws InterruptedException {
 		this.outstanding_file_requests.add(id);
+		System.out.println("Entered getFileRemote");
 		endpoint.connect(nh, new AppSocketReceiver(){
 			public void receiveSocket(AppSocket socket) {
+				System.out.println("Enterd receiveSocket");
 				FileTransfer msgr = new FileTransferImpl(socket, null, node.getEnvironment());
 				//msgr.addListener(new MyFileLis)
 				ByteBuffer fileReq = ByteBuffer.allocate(id.toByteArray().length);
 				fileReq.put(id.toByteArray());
 				fileReq.flip();
+				System.out.println("GET ME FILE WITH ID: "+fileReq);
 				msgr.sendMsg(fileReq, (byte)1, null);
 			}
 
 			public void receiveException(AppSocket arg0, Exception arg1) {
 				// TODO Auto-generated method stub
+				System.out.println(arg1.getMessage());
+				arg1.printStackTrace();
 				
 			}
 
@@ -254,6 +259,7 @@ public class BlueCrabFileStore implements Application{
 	public void deliver(Id id, Message message) {
 		//MESSAGE RECEIVED
 		//WE USE ANOTHER APPLICATION FOR MESSAGING - THIS IS FOR FILE TRANSFER
+		System.out.println("entererd into deliver with FileStore");
 	}
 	public void update(NodeHandle handle, boolean joined) {
 		//NOTHING TO DO FOR NOW

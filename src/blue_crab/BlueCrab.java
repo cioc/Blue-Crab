@@ -19,6 +19,7 @@ import rice.p2p.commonapi.NodeHandle;
 import rice.p2p.past.*;
 import rice.pastry.*;
 import rice.pastry.commonapi.PastryIdFactory;
+import rice.pastry.dist.DistNodeHandle;
 import rice.pastry.socket.SocketPastryNodeFactory;
 import rice.pastry.standard.RandomNodeIdFactory;
 import rice.persistence.*;
@@ -230,7 +231,7 @@ public class BlueCrab {
 		return output;
 	}
 	
-	public File getFromFile(final Id key) throws InterruptedException {
+	public File getFile(final Id key) throws InterruptedException {
 		final int node_select = env.getRandomSource().nextInt(number_of_nodes);
 		Past p = (Past)this.nodes.get(node_select);
 		final BlueCrabFileStore fs =  file_storage_nodes.get(node_select);
@@ -238,28 +239,33 @@ public class BlueCrab {
 		BlueCrabContinuation<Object, Exception> c = new BlueCrabContinuation<Object, Exception>(){
 			public void receiveResult(Object o){
 				PastContentHandle[] handles = (PastContentHandle[]) o;
-				
+				System.out.println("handles lookup complete with "+handles.length+" handles on node "+node_select);
 				boolean found_result = false;
 				int index = 0;
 				while (!found_result && index < handles.length) {
-					NodeHandle nh = handles[index].getNodeHandle();
+					NodeHandle nh = (handles[index].getNodeHandle());
+					//nh.
+					//START HERE - TODO - a GIANT HACk
+					System.out.println(nh);
 					try {
 						fs.getFileRemote(nh, key);
 					} catch (InterruptedException e1) {
 						// TODO Auto-generated catch block
 						e1.printStackTrace();
 					}
+					System.out.println("went past fs.getFileRemote");
 					//TODO - THIS SHOULD BE REIMPLEMNTED IN A NONBLOCKING MANNER
-					int counter = 0;
-					while (fs.searchingForFile(key) && counter < 10000) {
-						counter += 25;
+					//int counter = 0;
+					//busy loops are the worst
+					while (fs.searchingForFile(key)) {
 						try {
-							this.wait(25);
+							env.getTimeSource().sleep(25);
 						} catch (InterruptedException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 					}
+					found_result = true;
 					File result = fs.getFileFromCache(key);
 					if (result != null) {
 						this.success = true;
